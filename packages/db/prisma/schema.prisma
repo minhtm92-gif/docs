@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipRole {
+  ADMIN
+  LEADER
+  MEDIA
+  VIEWER
+}
+
+enum ProductStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum SellpageStatus {
+  DRAFT
+  PUBLISHED
+  PAUSED
+}
+
+enum SellpageDeliveryType {
+  ONEPAGE
+}
+
+enum CreativeAssetType {
+  VIDEO
+  IMAGE
+  THUMBNAIL
+  ADTEXT
+}
+
+enum AdPlatform {
+  FACEBOOK
+}
+
+enum MetricsLevel {
+  CAMPAIGN
+  ADSET
+  AD
+  POST
+  STACK
+  SELLPAGE
+}
+
+model org {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String
+  created_at DateTime  @default(now())
+  products   product[]
+  sellpages  sellpage[]
+  memberships membership[]
+}
+
+model user {
+  id          String       @id @default(uuid()) @db.Uuid
+  email       String       @unique
+  name        String
+  memberships membership[]
+}
+
+model membership {
+  org_id String @db.Uuid
+  user_id String @db.Uuid
+  role   MembershipRole
+  org    org   @relation(fields: [org_id], references: [id])
+  user   user  @relation(fields: [user_id], references: [id])
+
+  @@id([org_id, user_id])
+}
+
+model product {
+  id     String        @id @default(uuid()) @db.Uuid
+  org_id String        @db.Uuid
+  code   String
+  name   String
+  status ProductStatus @default(ACTIVE)
+  org    org           @relation(fields: [org_id], references: [id])
+  sellpages sellpage[]
+  creative_assets creative_asset[]
+}
+
+model sellpage {
+  id         String         @id @default(uuid()) @db.Uuid
+  org_id     String         @db.Uuid
+  product_id String         @db.Uuid
+  name       String
+  version    Int
+  pixel_id   String?
+  status     SellpageStatus @default(DRAFT)
+  org        org            @relation(fields: [org_id], references: [id])
+  product    product        @relation(fields: [product_id], references: [id])
+  deliveries sellpage_delivery[]
+  creative_stacks creative_stack[]
+  ad_posts ad_post[]
+  ad_launches ad_launch[]
+  metrics metrics_snapshot[]
+}
+
+model sellpage_delivery {
+  id          String               @id @default(uuid()) @db.Uuid
+  sellpage_id String               @db.Uuid
+  type        SellpageDeliveryType
+  domain      String
+  path        String
+  public_url  String
+  status      String
+  sellpage    sellpage             @relation(fields: [sellpage_id], references: [id])
+}
+
+model creative_asset {
+  id          String            @id @default(uuid()) @db.Uuid
+  product_id  String            @db.Uuid
+  type        CreativeAssetType
+  version     Int
+  storage_url String
+  meta_json   Json
+  product     product           @relation(fields: [product_id], references: [id])
+  media_stacks creative_stack[] @relation("MediaAsset")
+  adtext_stacks creative_stack[] @relation("AdTextAsset")
+  thumbnail_stacks creative_stack[] @relation("ThumbnailAsset")
+}
+
+model creative_stack {
+  id                 String @id @default(uuid()) @db.Uuid
+  sellpage_id         String @db.Uuid
+  media_asset_id      String @db.Uuid
+  adtext_asset_id     String @db.Uuid
+  thumbnail_asset_id  String @db.Uuid
+  status              String
+  sellpage            sellpage @relation(fields: [sellpage_id], references: [id])
+  media_asset         creative_asset @relation("MediaAsset", fields: [media_asset_id], references: [id])
+  adtext_asset        creative_asset @relation("AdTextAsset", fields: [adtext_asset_id], references: [id])
+  thumbnail_asset     creative_asset @relation("ThumbnailAsset", fields: [thumbnail_asset_id], references: [id])
+  ad_posts            ad_post[]
+}
+
+model ad_post {
+  id               String    @id @default(uuid()) @db.Uuid
+  platform         AdPlatform
+  page_id          String
+  post_id          String    @unique
+  sellpage_id      String    @db.Uuid
+  creative_stack_id String   @db.Uuid
+  sellpage         sellpage  @relation(fields: [sellpage_id], references: [id])
+  creative_stack   creative_stack @relation(fields: [creative_stack_id], references: [id])
+}
+
+model facebook_ad_strategy {
+  id          String @id @default(uuid()) @db.Uuid
+  name        String
+  config_json Json
+  status      String
+  launches    ad_launch[]
+}
+
+model ad_launch {
+  id            String @id @default(uuid()) @db.Uuid
+  strategy_id   String @db.Uuid
+  sellpage_id   String @db.Uuid
+  page_id       String
+  ad_account_id String
+  pixel_id      String
+  budget        Int
+  status        String
+  strategy      facebook_ad_strategy @relation(fields: [strategy_id], references: [id])
+  sellpage      sellpage @relation(fields: [sellpage_id], references: [id])
+}
+
+model metrics_snapshot {
+  id         String       @id @default(uuid()) @db.Uuid
+  date       DateTime
+  level      MetricsLevel
+  ref_id     String
+  sellpage_id String      @db.Uuid
+  spend      Decimal
+  revenue    Decimal
+  roas       Decimal
+  purchases  Int
+  raw_json   Json
+  sellpage   sellpage     @relation(fields: [sellpage_id], references: [id])
+}
