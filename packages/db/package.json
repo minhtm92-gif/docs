@@ -1,0 +1,8 @@
+{
+  "name": "@selless/db",
+  "version": "0.1.0",
+  "private": true,
+  "devDependencies": {
+    "prisma": "^5.20.0"
+  }
+}

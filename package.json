@@ -1,0 +1,8 @@
+{
+  "name": "seller-ops-ads-orchestrator",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
